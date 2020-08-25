@@ -45,20 +45,46 @@ int main()
 	int nAddrLen = sizeof(clientAddr);
 	SOCKET _cSock = INVALID_SOCKET;
 	char msgBuf[] = "Hello, I am Server.";
+	_cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrLen);
+	if (INVALID_SOCKET == _cSock)
+	{
+		printf("accept error,got a invalid client socket...\n");
+	}
+	//输出客户端信息
+	char clientIP[1024];
+	printf("new connection:IP = %s, PORT = %d\n", \
+		inet_ntop(AF_INET, (void*)&clientAddr.sin_addr, clientIP, sizeof(clientIP)), \
+		ntohs(clientAddr.sin_port));
 	while (true)
 	{
-		_cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrLen);
-		if (INVALID_SOCKET == _cSock)
+		//接收客户端信息
+		char _recvBuf[1024];
+		int nLen = recv(_cSock, _recvBuf, 1024, 0);
+		if (nLen<=0)
 		{
-			printf("accept error,got a invalid client socket...\n");
+			printf("客户端已退出,任务结束.\n");
+			break;
 		}
-		char clientIP[1024];
-		printf("new connection:IP = %s, PORT = %d\n", inet_ntop(AF_INET,(void*)&clientAddr.sin_addr,clientIP,sizeof(clientIP)),ntohs(clientAddr.sin_port));
-		//向客户端发送一条数据
-		send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0);
+		//处理客户端请求
+		if (0 == strcmp(_recvBuf, "getName"))
+		{
+			char msgBuf[] = "sue";
+			send(_cSock, msgBuf, strlen(msgBuf)+1, 0);
+		}
+		else if(0==strcmp(_recvBuf,"getAge"))
+		{
+			char msgBuf[] = "24";
+			send(_cSock, msgBuf, strlen(msgBuf) + 1, 0);
+		}
+		else
+		{
+			send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0);
+		}
+		
 	}
 
 	//关闭套接字
+	closesocket(_cSock);
 	closesocket(_sock);
 
 	//清除windows socket2.x环境

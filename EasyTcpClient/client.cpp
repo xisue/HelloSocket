@@ -37,13 +37,28 @@ int main()
 	{
 		printf("client connect error...\n");
 	}
-	//接收服务器信息
-	char recvBuf[1024];
-	int nlen=recv(_sock, recvBuf, 1024, 0);
-	if (nlen>0)
+	//向服务器发送命令
+	char cmdBuf[1024];
+	while (true)
 	{
-		printf("receive from server:%s\n", recvBuf);
+		scanf_s("%s", cmdBuf);
+		if (0 == strcmp(cmdBuf, "exit"))
+		{
+			break;
+		}
+		else
+		{
+			send(_sock, cmdBuf, strlen(cmdBuf) + 1, 0);
+		}
+		//接收服务器信息
+		char recvBuf[1024];
+		int nlen = recv(_sock, recvBuf, 1024, 0);
+		if (nlen > 0)
+		{
+			printf("receive from server:%s\n", recvBuf);
+		}
 	}
+	
 	//关闭socket
 	closesocket(_sock);
 
