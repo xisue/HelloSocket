@@ -17,11 +17,11 @@ int main()
 	SOCKET _sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == _sock)
 	{
-		printf("client socket error...\n");
+		cout << "client socket error..." << endl;
 	}
 	else
 	{
-		printf("client socket success...\n");
+		cout << "client socket success..." << endl;
 	}
 	//连接到服务器
 	sockaddr_in _sin;
@@ -31,19 +31,20 @@ int main()
 	int ret=connect(_sock, (sockaddr*)&_sin, sizeof(sockaddr_in));
 	if (SOCKET_ERROR == ret)
 	{
-		printf("client connect error...\n");
+		cout<<"client connect error..."<<endl;
 	}
 	else
 	{
-		printf("client connect error...\n");
+		cout << "client connect success..."<<endl;
 	}
 	//向服务器发送命令
 	char cmdBuf[1024];
 	while (true)
 	{
-		scanf_s("%s", cmdBuf);
+		cin>>cmdBuf;
 		if (0 == strcmp(cmdBuf, "exit"))
 		{
+			cout << "客户端退出" << endl;
 			break;
 		}
 		else
@@ -55,13 +56,12 @@ int main()
 		int nlen = recv(_sock, recvBuf, 1024, 0);
 		if (nlen > 0)
 		{
-			printf("receive from server:%s\n", recvBuf);
+			cout<<"服务端响应: "<< recvBuf<<endl;
 		}
 	}
 	
 	//关闭socket
 	closesocket(_sock);
-
 	//清除windows socket2.x环境
 	WSACleanup();
 	getchar();

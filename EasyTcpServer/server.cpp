@@ -23,46 +23,48 @@ int main()
 	_sin.sin_addr.S_un.S_addr = INADDR_ANY;// inet_addr("192.168.1.77");
 	if (SOCKET_ERROR == bind(_sock, (sockaddr*)&_sin, sizeof(_sin)))
 	{
-		printf("server bind error....\n");
+		cout<<"server bind error...."<<endl;
 	}
 	else
 	{
-		printf("server bind success....\n");
+		cout<<"server bind success...."<<endl;
 	}
 
 	//设置最大监听数
 	if (SOCKET_ERROR == listen(_sock, 128))
 	{
-		printf("server listen error....\n");
+		cout<<"server listen error...."<<endl;
 	}
 	else
 	{
-		printf("server listen success....\n");
+		cout<<"server listen success...."<<endl;
 	}
 
 	//阻塞等待客户端连接
 	sockaddr_in clientAddr;
 	int nAddrLen = sizeof(clientAddr);
 	SOCKET _cSock = INVALID_SOCKET;
-	char msgBuf[] = "Hello, I am Server.";
+
 	_cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrLen);
 	if (INVALID_SOCKET == _cSock)
 	{
-		printf("accept error,got a invalid client socket...\n");
+		cout<<"accept error,got a invalid client socket..."<<endl;
 	}
 	//输出客户端信息
 	char clientIP[1024];
 	printf("new connection:IP = %s, PORT = %d\n", \
 		inet_ntop(AF_INET, (void*)&clientAddr.sin_addr, clientIP, sizeof(clientIP)), \
 		ntohs(clientAddr.sin_port));
+
 	while (true)
 	{
+		
 		//接收客户端信息
 		char _recvBuf[1024];
 		int nLen = recv(_cSock, _recvBuf, 1024, 0);
 		if (nLen<=0)
 		{
-			printf("客户端已退出,任务结束.\n");
+			cout<<"客户端已退出,任务结束."<<endl;
 			break;
 		}
 		//处理客户端请求
@@ -78,16 +80,16 @@ int main()
 		}
 		else
 		{
+			char msgBuf[] = "Hello, I am Server.";
 			send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0);
 		}
-		
 	}
-
 	//关闭套接字
 	closesocket(_cSock);
 	closesocket(_sock);
 
 	//清除windows socket2.x环境
 	WSACleanup();
+	getchar();
 	return 0;
 }
