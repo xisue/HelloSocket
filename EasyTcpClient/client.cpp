@@ -1,16 +1,20 @@
 ﻿#define WIN32_LEAN_AND_MEAN //windows.h和winsock2中重复包含了一些头文件，避免重复定义
+#define _CRT_SECURE_NO_WARNINGS
 #include<Windows.h>
 #include<WinSock2.h>
 #include<WS2tcpip.h>
 #include <iostream>
 using namespace std;
 
+
 //#pragma comment(lib,"ws2_32.lib") //不利于跨平台，建议在属性里面修改，添加依赖项
 
 enum CMD
 {
 	CMD_LOG,
+	CMD_LOG_RESULT,
 	CMD_LOGOUT,
+	CMD_LOGOUT_RESULT,
 	CMD_ERROR
 };
 struct DataHeader
@@ -18,22 +22,41 @@ struct DataHeader
 	short dataLength;
 	short cmd;
 };
-struct Log
+struct Log :public DataHeader
 {
+	Log() {
+		dataLength = sizeof(Log);
+		cmd = CMD_LOG;
+	}
 	char username[32];
 	char password[128];
 };
-struct LogResult
+struct LogResult :public DataHeader
 {
-	int result;
+	LogResult()
+	{
+		dataLength = sizeof(LogResult);
+		cmd = CMD_LOG_RESULT;
+	}
+	int result=0;
 };
-struct Logout
+struct Logout :public DataHeader
 {
+	Logout()
+	{
+		dataLength = sizeof(Logout);
+		cmd = CMD_LOGOUT;
+	}
 	char username[32];
 };
-struct LogoutResult
+struct LogoutResult :public DataHeader
 {
-	int result;
+	LogoutResult()
+	{
+		dataLength = sizeof(LogoutResult);
+		cmd = CMD_LOGOUT_RESULT;
+	}
+	int result=0;
 };
 int main()
 {
@@ -79,33 +102,24 @@ int main()
 		}
 		else if (0 == strcmp(cmdBuf, "login"))
 		{
-			Log login = { "sue","memory" };
-			DataHeader header;
-			header.cmd = CMD_LOG;
-			header.dataLength = sizeof(login);
+			Log log;
+			strcpy(log.username,"sue");
+			strcpy(log.password, "memory");
 			//向服务器发送数据
-			send(_sock, (const char*)&header, sizeof(DataHeader), 0);
-			send(_sock, (const char*)&login, sizeof(Log), 0);
+			send(_sock, (const char*)&log, sizeof(Log), 0);
 			//接收服务器返回的数据
-			DataHeader retHeader;
 			LogResult logRet;
-			recv(_sock, (char*)&retHeader, sizeof(retHeader), 0);
 			recv(_sock, (char*)&logRet, sizeof(logRet), 0);
 			cout << "Login Result: " << logRet.result << endl;
 		}
 		else if (0 == strcmp(cmdBuf, "logout"))
 		{
-			Logout logout = { "sue" };
-			DataHeader header;
-			header.cmd = CMD_LOGOUT;
-			header.dataLength = sizeof(Logout);
+			Logout logout;
+			strcpy(logout.username,"sue");
 			//向服务器发送数据
-			send(_sock, (const char*)&header, sizeof(DataHeader), 0);
 			send(_sock, (const char*)&logout, sizeof(Logout), 0);
 			//接收服务器返回的数据
-			DataHeader retHeader;
 			LogoutResult logoutRet;
-			recv(_sock, (char*)&retHeader, sizeof(retHeader), 0);
 			recv(_sock, (char*)&logoutRet, sizeof(logoutRet), 0);
 			cout << "Login out Result: " << logoutRet.result << endl;
 		}

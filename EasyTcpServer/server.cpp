@@ -10,7 +10,9 @@ using namespace std;
 enum CMD
 {
 	CMD_LOG,
+	CMD_LOG_RESULT,
 	CMD_LOGOUT,
+	CMD_LOGOUT_RESULT,
 	CMD_ERROR
 };
 struct DataHeader 
@@ -18,23 +20,43 @@ struct DataHeader
 	short dataLength;
 	short cmd;
 };
-struct Log
+struct Log:public DataHeader
 {
+	Log() {
+		dataLength = sizeof(Log);
+		cmd = CMD_LOG;
+	}
 	char username[32];
 	char password[128];
 };
-struct LogResult
+struct LogResult :public DataHeader
 {
-	int result;
+	LogResult()
+	{
+		dataLength = sizeof(LogResult);
+		cmd = CMD_LOG_RESULT;
+	}
+	int result=0;
 };
-struct Logout
+struct Logout :public DataHeader
 {
+	Logout()
+	{
+		dataLength = sizeof(Logout);
+		cmd = CMD_LOGOUT;
+	}
 	char username[32];
 };
-struct LogoutResult
+struct LogoutResult :public DataHeader
 {
-	int result;
+	LogoutResult()
+	{
+		dataLength = sizeof(LogoutResult);
+		cmd = CMD_LOGOUT_RESULT;
+	}
+	int result=0;
 };
+
 int main()
 {
 	//启动windows socket2.x环境
@@ -90,31 +112,34 @@ int main()
 		
 		//接收客户端信息
 		DataHeader header;
-		int nLen = recv(_cSock, (char*)&header, 1024, 0);
+		int nLen = recv(_cSock, (char*)&header, sizeof(header), 0);
 		if (nLen<=0)
 		{
 			cout<<"客户端已退出,任务结束."<<endl;
 			break;
 		}
-		cout << "收到命令: " << header.cmd << " 数据长度： " << header.dataLength << endl;
+		
 		//处理客户端请求
 		switch (header.cmd)
 		{
 			case CMD_LOG:
 			{
+
 				Log log;
-				recv(_cSock, (char*)&log, sizeof(Log), 0);
-				LogResult ret = { 1 };
-				send(_cSock, (char*)&header, sizeof(DataHeader), 0);
+				recv(_cSock, (char*)&log+sizeof(DataHeader), sizeof(Log)- sizeof(DataHeader), 0);
+				cout << "收到命令: " << header.cmd << " 数据长度： " << header.dataLength << endl;
+				cout << "姓名： " << log.username << " 密码： " << log.password << endl;
+				LogResult ret;
 				send(_cSock, (char*)&ret, sizeof(LogResult), 0);
 				break;
 			}
 			case CMD_LOGOUT:
 			{
 				Logout logout;
-				recv(_cSock, (char*)&logout, sizeof(Logout), 0);
-				LogoutResult ret = { 1 };
-				send(_cSock, (char*)&header, sizeof(DataHeader), 0);
+				recv(_cSock, (char*)&logout+ sizeof(DataHeader), sizeof(Logout)- sizeof(DataHeader), 0);
+				cout << "收到命令: " << header.cmd << " 数据长度： " << header.dataLength << endl;
+				cout << "姓名： " << logout.username << endl;
+				LogoutResult ret;
 				send(_cSock, (char*)&ret, sizeof(LogoutResult), 0);
 				break;
 			}
