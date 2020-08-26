@@ -7,10 +7,33 @@ using namespace std;
 
 //#pragma comment(lib,"ws2_32.lib") //不利于跨平台，建议在属性里面修改，添加依赖项
 
-struct DataPackage
+enum CMD
 {
-	int age;
-	char name[32];
+	CMD_LOG,
+	CMD_LOGOUT,
+	CMD_ERROR
+};
+struct DataHeader
+{
+	short dataLength;
+	short cmd;
+};
+struct Log
+{
+	char username[32];
+	char password[128];
+};
+struct LogResult
+{
+	int result;
+};
+struct Logout
+{
+	char username[32];
+};
+struct LogoutResult
+{
+	int result;
 };
 int main()
 {
@@ -44,26 +67,51 @@ int main()
 		cout << "client connect success..."<<endl;
 	}
 	//向服务器发送命令
-	char cmdBuf[1024];
+	
 	while (true)
 	{
+		char cmdBuf[1024];
 		cin>>cmdBuf;
 		if (0 == strcmp(cmdBuf, "exit"))
 		{
 			cout << "客户端退出" << endl;
 			break;
 		}
+		else if (0 == strcmp(cmdBuf, "login"))
+		{
+			Log login = { "sue","memory" };
+			DataHeader header;
+			header.cmd = CMD_LOG;
+			header.dataLength = sizeof(login);
+			//向服务器发送数据
+			send(_sock, (const char*)&header, sizeof(DataHeader), 0);
+			send(_sock, (const char*)&login, sizeof(Log), 0);
+			//接收服务器返回的数据
+			DataHeader retHeader;
+			LogResult logRet;
+			recv(_sock, (char*)&retHeader, sizeof(retHeader), 0);
+			recv(_sock, (char*)&logRet, sizeof(logRet), 0);
+			cout << "Login Result: " << logRet.result << endl;
+		}
+		else if (0 == strcmp(cmdBuf, "logout"))
+		{
+			Logout logout = { "sue" };
+			DataHeader header;
+			header.cmd = CMD_LOGOUT;
+			header.dataLength = sizeof(Logout);
+			//向服务器发送数据
+			send(_sock, (const char*)&header, sizeof(DataHeader), 0);
+			send(_sock, (const char*)&logout, sizeof(Logout), 0);
+			//接收服务器返回的数据
+			DataHeader retHeader;
+			LogoutResult logoutRet;
+			recv(_sock, (char*)&retHeader, sizeof(retHeader), 0);
+			recv(_sock, (char*)&logoutRet, sizeof(logoutRet), 0);
+			cout << "Login out Result: " << logoutRet.result << endl;
+		}
 		else
 		{
-			send(_sock, cmdBuf, strlen(cmdBuf) + 1, 0);
-		}
-		//接收服务器信息
-		char recvBuf[1024];
-		int nlen = recv(_sock, recvBuf, 1024, 0);
-		if (nlen > 0)
-		{
-			DataPackage* info = (DataPackage*)recvBuf;
-			cout<<"服务端响应:姓名="<<info->name<<" ,年龄="<< info->age<<endl;
+			cout << "不支持的命令，请重新输入！" << endl;
 		}
 	}
 	

@@ -7,10 +7,33 @@ using namespace std;
 
 //#pragma comment(lib,"ws2_32.lib") //不利于跨平台，建议在属性里面修改，添加依赖项
 
-struct DataPackage
+enum CMD
 {
-	int age;
-	char name[32];
+	CMD_LOG,
+	CMD_LOGOUT,
+	CMD_ERROR
+};
+struct DataHeader 
+{
+	short dataLength;
+	short cmd;
+};
+struct Log
+{
+	char username[32];
+	char password[128];
+};
+struct LogResult
+{
+	int result;
+};
+struct Logout
+{
+	char username[32];
+};
+struct LogoutResult
+{
+	int result;
 };
 int main()
 {
@@ -66,23 +89,42 @@ int main()
 	{
 		
 		//接收客户端信息
-		char _recvBuf[1024];
-		int nLen = recv(_cSock, _recvBuf, 1024, 0);
+		DataHeader header;
+		int nLen = recv(_cSock, (char*)&header, 1024, 0);
 		if (nLen<=0)
 		{
 			cout<<"客户端已退出,任务结束."<<endl;
 			break;
 		}
+		cout << "收到命令: " << header.cmd << " 数据长度： " << header.dataLength << endl;
 		//处理客户端请求
-		if (0 == strcmp(_recvBuf, "getInfo"))
+		switch (header.cmd)
 		{
-			DataPackage info = { 24,"sue" };
-			send(_cSock, (const char*)&info, sizeof(DataPackage), 0);
-		}
-		else
-		{
-			char msgBuf[] = "?????";
-			send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0);
+			case CMD_LOG:
+			{
+				Log log;
+				recv(_cSock, (char*)&log, sizeof(Log), 0);
+				LogResult ret = { 1 };
+				send(_cSock, (char*)&header, sizeof(DataHeader), 0);
+				send(_cSock, (char*)&ret, sizeof(LogResult), 0);
+				break;
+			}
+			case CMD_LOGOUT:
+			{
+				Logout logout;
+				recv(_cSock, (char*)&logout, sizeof(Logout), 0);
+				LogoutResult ret = { 1 };
+				send(_cSock, (char*)&header, sizeof(DataHeader), 0);
+				send(_cSock, (char*)&ret, sizeof(LogoutResult), 0);
+				break;
+			}
+			default:
+			{
+				header.cmd = CMD_ERROR;
+				header.dataLength = 0;
+				send(_cSock, (char*)&header, sizeof(DataHeader), 0);
+				break;
+			}
 		}
 	}
 	//关闭套接字
