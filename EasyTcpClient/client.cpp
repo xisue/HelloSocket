@@ -6,6 +6,12 @@
 using namespace std;
 
 //#pragma comment(lib,"ws2_32.lib") //不利于跨平台，建议在属性里面修改，添加依赖项
+
+struct DataPackage
+{
+	int age;
+	char name[32];
+};
 int main()
 {
 	//启动windows socket2.x环境
@@ -56,7 +62,8 @@ int main()
 		int nlen = recv(_sock, recvBuf, 1024, 0);
 		if (nlen > 0)
 		{
-			cout<<"服务端响应: "<< recvBuf<<endl;
+			DataPackage* info = (DataPackage*)recvBuf;
+			cout<<"服务端响应:姓名="<<info->name<<" ,年龄="<< info->age<<endl;
 		}
 	}
 	

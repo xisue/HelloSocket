@@ -6,6 +6,12 @@
 using namespace std;
 
 //#pragma comment(lib,"ws2_32.lib") //不利于跨平台，建议在属性里面修改，添加依赖项
+
+struct DataPackage
+{
+	int age;
+	char name[32];
+};
 int main()
 {
 	//启动windows socket2.x环境
@@ -68,19 +74,14 @@ int main()
 			break;
 		}
 		//处理客户端请求
-		if (0 == strcmp(_recvBuf, "getName"))
+		if (0 == strcmp(_recvBuf, "getInfo"))
 		{
-			char msgBuf[] = "sue";
-			send(_cSock, msgBuf, strlen(msgBuf)+1, 0);
-		}
-		else if(0==strcmp(_recvBuf,"getAge"))
-		{
-			char msgBuf[] = "24";
-			send(_cSock, msgBuf, strlen(msgBuf) + 1, 0);
+			DataPackage info = { 24,"sue" };
+			send(_cSock, (const char*)&info, sizeof(DataPackage), 0);
 		}
 		else
 		{
-			char msgBuf[] = "Hello, I am Server.";
+			char msgBuf[] = "?????";
 			send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0);
 		}
 	}
