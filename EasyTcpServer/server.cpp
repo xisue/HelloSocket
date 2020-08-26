@@ -111,42 +111,45 @@ int main()
 	{
 		
 		//接收客户端信息
-		DataHeader header;
-		int nLen = recv(_cSock, (char*)&header, sizeof(header), 0);
+		char szRecv[1024];
+		int nLen = recv(_cSock, szRecv, sizeof(DataHeader), 0);
 		if (nLen<=0)
 		{
 			cout<<"客户端已退出,任务结束."<<endl;
 			break;
 		}
-		
+		DataHeader* header;
+		header = (DataHeader*)szRecv;
 		//处理客户端请求
-		switch (header.cmd)
+		switch (header->cmd)
 		{
 			case CMD_LOG:
 			{
 
-				Log log;
-				recv(_cSock, (char*)&log+sizeof(DataHeader), sizeof(Log)- sizeof(DataHeader), 0);
-				cout << "收到命令: " << header.cmd << " 数据长度： " << header.dataLength << endl;
-				cout << "姓名： " << log.username << " 密码： " << log.password << endl;
+				
+				recv(_cSock, szRecv +sizeof(DataHeader), header->dataLength- sizeof(DataHeader), 0);
+				Log* log = (Log*)szRecv;
+				cout << "收到命令: " << log->cmd << " 数据长度： " << log->dataLength << endl;
+				cout << "姓名： " << log->username << " 密码： " << log->password << endl;
 				LogResult ret;
 				send(_cSock, (char*)&ret, sizeof(LogResult), 0);
 				break;
 			}
 			case CMD_LOGOUT:
 			{
-				Logout logout;
-				recv(_cSock, (char*)&logout+ sizeof(DataHeader), sizeof(Logout)- sizeof(DataHeader), 0);
-				cout << "收到命令: " << header.cmd << " 数据长度： " << header.dataLength << endl;
-				cout << "姓名： " << logout.username << endl;
+				
+				recv(_cSock, szRecv + sizeof(DataHeader), header->dataLength - sizeof(DataHeader), 0);
+				Logout* logout = (Logout*)szRecv;
+				cout << "收到命令: " << logout->cmd << " 数据长度： " << logout->dataLength << endl;
+				cout << "姓名： " << logout->username << endl;
 				LogoutResult ret;
 				send(_cSock, (char*)&ret, sizeof(LogoutResult), 0);
 				break;
 			}
 			default:
 			{
-				header.cmd = CMD_ERROR;
-				header.dataLength = 0;
+				header->cmd = CMD_ERROR;
+				header->dataLength = 0;
 				send(_cSock, (char*)&header, sizeof(DataHeader), 0);
 				break;
 			}
