@@ -15,6 +15,7 @@ enum CMD
 	CMD_LOG_RESULT,
 	CMD_LOGOUT,
 	CMD_LOGOUT_RESULT,
+	CMD_NEW_USER_JOIN,
 	CMD_ERROR
 };
 struct DataHeader 
@@ -37,8 +38,9 @@ struct LogResult :public DataHeader
 	{
 		dataLength = sizeof(LogResult);
 		cmd = CMD_LOG_RESULT;
+		result = 0;
 	}
-	int result=0;
+	int result;
 };
 struct Logout :public DataHeader
 {
@@ -55,8 +57,19 @@ struct LogoutResult :public DataHeader
 	{
 		dataLength = sizeof(LogoutResult);
 		cmd = CMD_LOGOUT_RESULT;
+		result = 0;
 	}
-	int result=0;
+	int result;
+};
+struct NewUserJion :public DataHeader
+{
+	NewUserJion()
+	{
+		dataLength = sizeof(NewUserJion);
+		cmd = CMD_NEW_USER_JOIN;
+		sock = 0;
+	}
+	SOCKET sock;
 };
 int  processor(SOCKET _cSock)
 {
@@ -154,13 +167,16 @@ int main()
 		FD_SET(_sock, &fdRead);
 		FD_SET(_sock, &fdWrite);
 		FD_SET(_sock, &fdExp);
-
+		 
 		for (int n= g_clients.size()-1;n>=0;n--)
-		{
+		{ 
 			FD_SET(g_clients[n], &fdRead);
 		}
 		//nfds为一个整数值，指fd_set集合中所有描述符的范围（最大值+1），window可以直接传0
-		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, NULL);//NULL阻塞监听，0非阻塞监听，轮询
+		timeval t;
+		t.tv_sec = 1;
+		t.tv_usec = 0;
+		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, &t);//NULL阻塞监听，0非阻塞监听，轮询
 		if (ret < 0)
 		{
 			cout << "select 任务结束" << endl;
@@ -179,16 +195,25 @@ int main()
 			{
 				cout << "accept error,got a invalid client socket..." << endl;
 			}
-				
+			else
+			{
+				NewUserJion newuser;
+				newuser.sock = _cSock;
+				for (int n = g_clients.size() - 1; n >= 0; n--)
+				{
+					send(g_clients[n], (char*)&newuser, sizeof(newuser), 0);
+				}
 				//输出客户端信息
 				char clientIP[1024];
 				printf("new connection:IP = %s, PORT = %d\n", \
 					inet_ntop(AF_INET, (void*)&clientAddr.sin_addr, clientIP, sizeof(clientIP)), \
 					ntohs(clientAddr.sin_port));
 				g_clients.push_back(_cSock);
-				//FD_SET(_cSock, &fdRead);
+				
+			}	
 			
 		}
+		cout << "处理其他..." << endl;
 		for (int n = 0; n < fdRead.fd_count; n++)
 		{
 
