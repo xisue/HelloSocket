@@ -1,7 +1,18 @@
-﻿#define WIN32_LEAN_AND_MEAN //windows.h和winsock2中重复包含了一些头文件，避免重复定义
-#include<Windows.h>
-#include<WinSock2.h>
-#include<WS2tcpip.h>
+﻿#ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN //windows.h和winsock2中重复包含了一些头文件，避免重复定义
+	#include<Windows.h>
+	#include<WinSock2.h>
+	#include<WS2tcpip.h>
+	#pragma comment(lib,"ws2_32.lib")
+#else
+	#include<unistd.h>
+	#include<arpa/inet.h>
+	#include<string.h>
+
+	typedef int SOCKET;
+	#define INVALID_SOCKET (SOCKET)(~0)
+	#define SOCKET_ERROR (-1)
+#endif
 #include <iostream>
 #include<vector>
 #include<algorithm>
@@ -75,10 +86,10 @@ int  processor(SOCKET _cSock)
 {
 	//接收客户端信息
 	char szRecv[1024];//缓冲区
-	int nLen = recv(_cSock, szRecv, sizeof(DataHeader), 0);
+	int nLen = (int)recv(_cSock, szRecv, sizeof(DataHeader), 0);
 	if (nLen <= 0)
 	{
-		cout << "客户端已退出,任务结束." << endl;
+		cout << "客户端<SOCKET: "<<_cSock<<">已退出,服务端任务结束." << endl;
 		return -1;
 	}
 	DataHeader* header;
@@ -90,7 +101,7 @@ int  processor(SOCKET _cSock)
 	{
 		recv(_cSock, szRecv + sizeof(DataHeader), header->dataLength - sizeof(DataHeader), 0);
 		Log* log = (Log*)szRecv;
-		cout << "收到命令: " << log->cmd << " 数据长度： " << log->dataLength << endl;
+		cout << "收到<SOCKET: " << _cSock << ">命令: Login , " << " 数据长度： " << log->dataLength << endl;
 		cout << "姓名： " << log->username << " 密码： " << log->password << endl;
 		LogResult ret;
 		send(_cSock, (char*)&ret, sizeof(LogResult), 0);
@@ -101,7 +112,7 @@ int  processor(SOCKET _cSock)
 
 		recv(_cSock, szRecv + sizeof(DataHeader), header->dataLength - sizeof(DataHeader), 0);
 		Logout* logout = (Logout*)szRecv;
-		cout << "收到命令: " << logout->cmd << " 数据长度： " << logout->dataLength << endl;
+		cout << "收到<SOCKET: " << _cSock << ">命令: Login , " << " 数据长度： " << logout->dataLength << endl;
 		cout << "姓名： " << logout->username << endl;
 		LogoutResult ret;
 		send(_cSock, (char*)&ret, sizeof(LogoutResult), 0);
@@ -121,11 +132,12 @@ int  processor(SOCKET _cSock)
 vector<SOCKET> g_clients;
 int main()
 {
+#ifdef _WIN32
 	//启动windows socket2.x环境
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA dat;
 	WSAStartup(ver, &dat);
-
+#endif
 	//建立一个套接字
 	SOCKET _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -133,24 +145,28 @@ int main()
 	sockaddr_in _sin;
 	_sin.sin_family = AF_INET;
 	_sin.sin_port = htons(4567);
+#ifdef _WIN32
 	_sin.sin_addr.S_un.S_addr = INADDR_ANY;// inet_addr("192.168.1.77");
+#else
+	_sin.sin_addr.s_addr = INADDR_ANY;
+#endif
 	if (SOCKET_ERROR == bind(_sock, (sockaddr*)&_sin, sizeof(_sin)))
 	{
-		cout<<"server bind error...."<<endl;
+		cout<<"服务端绑定端口错误...."<<endl;
 	}
 	else
 	{
-		cout<<"server bind success...."<<endl;
+		cout<<"服务端绑定端口成功...."<<endl;
 	}
 
 	//设置最大监听数
 	if (SOCKET_ERROR == listen(_sock, 128))
 	{
-		cout<<"server listen error...."<<endl;
+		cout<<"服务器监听失败...."<<endl;
 	}
 	else
 	{
-		cout<<"server listen success...."<<endl;
+		cout<<"服务器监听成功...."<<endl;
 	}
 
 	
@@ -167,16 +183,18 @@ int main()
 		FD_SET(_sock, &fdRead);
 		FD_SET(_sock, &fdWrite);
 		FD_SET(_sock, &fdExp);
-		 
+		SOCKET maxSock=_sock;
 		for (int n= g_clients.size()-1;n>=0;n--)
 		{ 
 			FD_SET(g_clients[n], &fdRead);
+			if(g_clients[n]>maxSock)
+				maxSock=g_clients[n];
 		}
 		//nfds为一个整数值，指fd_set集合中所有描述符的范围（最大值+1），window可以直接传0
 		timeval t;
 		t.tv_sec = 1;
 		t.tv_usec = 0;
-		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, &t);//NULL阻塞监听，0非阻塞监听，轮询
+		int ret = select(maxSock + 1, &fdRead, &fdWrite, &fdExp, &t);//NULL阻塞监听，0非阻塞监听，轮询
 		if (ret < 0)
 		{
 			cout << "select 任务结束" << endl;
@@ -190,10 +208,10 @@ int main()
 			int nAddrLen = sizeof(clientAddr);
 			SOCKET _cSock = INVALID_SOCKET;
 
-			_cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrLen);
+			_cSock = accept(_sock, (sockaddr*)&clientAddr, (socklen_t*)&nAddrLen);
 			if (INVALID_SOCKET == _cSock)
 			{
-				cout << "accept error,got a invalid client socket..." << endl;
+				cout << "连接错误的套接字..." << endl;
 			}
 			else
 			{
@@ -205,7 +223,7 @@ int main()
 				}
 				//输出客户端信息
 				char clientIP[1024];
-				printf("new connection:IP = %s, PORT = %d\n", \
+				printf("新客户端连接:IP = %s, PORT = %d\n", \
 					inet_ntop(AF_INET, (void*)&clientAddr.sin_addr, clientIP, sizeof(clientIP)), \
 					ntohs(clientAddr.sin_port));
 				g_clients.push_back(_cSock);
@@ -214,30 +232,38 @@ int main()
 			
 		}
 		cout << "处理其他..." << endl;
-		for (int n = 0; n < fdRead.fd_count; n++)
+		for (int n=(int)g_clients.size()-1;n>=0;n--)
 		{
-
-				if (-1 == processor(fdRead.fd_array[n]))
+			if (FD_ISSET(g_clients[n], &fdRead))
+			{
+				if (-1 == processor(g_clients[n]))
 				{
-					auto iter = find(g_clients.begin(), g_clients.end(), fdRead.fd_array[n]);
+					auto iter = g_clients.begin()+n;
 					if (iter != g_clients.end())
 					{
 						g_clients.erase(iter);
 					}
 				}
-			
-			
+			}
+
 		}
 	}
-	for (int n=g_clients.size()-1;n>=0;n--)
+#ifdef _WIN32
+	for (int n = g_clients.size() - 1; n >= 0; n--)
 	{
 		closesocket(g_clients[n]);
 	}
 	//关闭套接字
 	closesocket(_sock);
-
 	//清除windows socket2.x环境
 	WSACleanup();
-	getchar();
+#else
+	for (int n = g_clients.size() - 1; n >= 0; n--)
+	{
+		close(g_clients[n]);
+	}
+	//关闭套接字
+	close(_sock);
+#endif
 	return 0;
 }

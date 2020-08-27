@@ -1,7 +1,6 @@
-﻿#define WIN32_LEAN_AND_MEAN //windows.h和winsock2中重复包含了一些头文件，避免重复定义
-#define _CRT_SECURE_NO_WARNINGS
-
+﻿#define _CRT_SECURE_NO_WARNINGS
 #ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN //windows.h和winsock2中重复包含了一些头文件，避免重复定义
 	#include<Windows.h>
 	#include<WinSock2.h>
 	#include<WS2tcpip.h>
@@ -89,7 +88,7 @@ int  processor(SOCKET _cSock)
 {
 	//接收客户端信息
 	char szRecv[1024];//缓冲区
-	int nLen = recv(_cSock, szRecv, sizeof(DataHeader), 0);
+	int nLen = (int)recv(_cSock, szRecv, sizeof(DataHeader), 0);
 	if (nLen <= 0)
 	{
 		cout << "与服务器断开连接,任务结束." << endl;
@@ -125,7 +124,7 @@ int  processor(SOCKET _cSock)
 	}
 	}
 	return 0;
-}
+}bool bRun = true;
 void cmdThread(SOCKET _sock)
 {
 	while (true)
@@ -134,7 +133,8 @@ void cmdThread(SOCKET _sock)
 		cin >> cmdBuf;
 		if (0 == strcmp(cmdBuf, "exit"))
 		{
-			cout << "客户端线程退出" << endl;
+			bRun = false;
+			cout << "客户端<SOCKET: "<<_sock<<"> 线程退出" << endl;
 			break;
 		}
 		else if (0 == strcmp(cmdBuf, "login"))
@@ -159,6 +159,8 @@ void cmdThread(SOCKET _sock)
 	}
 	return;
 }
+
+
 int main()
 {
 #ifdef _WIN32
@@ -171,11 +173,11 @@ int main()
 	SOCKET _sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == _sock)
 	{
-		cout << "client socket error..." << endl;
+		cout << "客户端无效的套接字..." << endl;
 	}
 	else
 	{
-		cout << "client socket success..." << endl;
+		cout << "客户端创建套接字..." << endl;
 	}
 	//连接到服务器
 	sockaddr_in _sin;
@@ -185,17 +187,17 @@ int main()
 	int ret=connect(_sock, (sockaddr*)&_sin, sizeof(sockaddr_in));
 	if (SOCKET_ERROR == ret)
 	{
-		cout<<"client connect error..."<<endl;
+		cout<<"客户端连接错误..."<<endl;
 	}
 	else
 	{
-		cout << "client connect success..."<<endl;
+		cout << "客户端连接成功..."<<endl;
 	}
 	//启动线程
 	thread t1(cmdThread,_sock);
 	t1.detach();
 	//向服务器发送命令
-	while (true)
+	while (bRun)
 	{
 		fd_set fdReads;
 		FD_ZERO(&fdReads);
@@ -225,6 +227,8 @@ int main()
 #else
 	close(_sock);
 #endif
+	cout << "客户端已退出" << endl;
+	getchar();
 	getchar();
 	return 0;
 }
