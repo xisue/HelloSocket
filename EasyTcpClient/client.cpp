@@ -1,8 +1,21 @@
 ﻿#define WIN32_LEAN_AND_MEAN //windows.h和winsock2中重复包含了一些头文件，避免重复定义
 #define _CRT_SECURE_NO_WARNINGS
-#include<Windows.h>
-#include<WinSock2.h>
-#include<WS2tcpip.h>
+
+#ifdef _WIN32
+	#include<Windows.h>
+	#include<WinSock2.h>
+	#include<WS2tcpip.h>
+#else
+	#include<unistd.h>
+	#include<arpa/inet.h>
+	#include<string.h>
+
+	typedef int SOCKET;
+	#define INVALID_SOCKET (SOCKET)(~0)
+	#define SOCKET_ERROR (-1)
+#endif
+
+
 #include <iostream>
 #include<thread>
 using namespace std;
@@ -148,11 +161,12 @@ void cmdThread(SOCKET _sock)
 }
 int main()
 {
+#ifdef _WIN32
 	//启动windows socket2.x环境
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA dat;
 	WSAStartup(ver, &dat);
-
+#endif
 	//建立一个socket
 	SOCKET _sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == _sock)
@@ -187,7 +201,7 @@ int main()
 		FD_ZERO(&fdReads);
 		FD_SET(_sock, &fdReads);
 		timeval t = { 1,0 };
-		int ret=select(_sock, &fdReads, NULL, NULL, &t);
+		int ret=select(_sock+1, &fdReads, NULL, NULL, &t);
 		if (ret < 0)
 		{
 			cout << "select 任务结束1" << endl;
@@ -203,11 +217,14 @@ int main()
 			}
 		}
 	}
-	
+#ifdef _WIN32	
 	//关闭socket
 	closesocket(_sock);
 	//清除windows socket2.x环境
 	WSACleanup();
+#else
+	close(_sock);
+#endif
 	getchar();
 	return 0;
 }
