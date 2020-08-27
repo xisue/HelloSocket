@@ -4,6 +4,7 @@
 #include<WinSock2.h>
 #include<WS2tcpip.h>
 #include <iostream>
+#include<thread>
 using namespace std;
 
 
@@ -112,7 +113,39 @@ int  processor(SOCKET _cSock)
 	}
 	return 0;
 }
-
+void cmdThread(SOCKET _sock)
+{
+	while (true)
+	{
+		char cmdBuf[1024];
+		cin >> cmdBuf;
+		if (0 == strcmp(cmdBuf, "exit"))
+		{
+			cout << "客户端线程退出" << endl;
+			break;
+		}
+		else if (0 == strcmp(cmdBuf, "login"))
+		{
+			Log log;
+			strcpy(log.username, "sue");
+			strcpy(log.password, "memory");
+			//向服务器发送数据
+			send(_sock, (const char*)&log, sizeof(Log), 0);
+		}
+		else if (0 == strcmp(cmdBuf, "logout"))
+		{
+			Logout logout;
+			strcpy(logout.username, "sue");
+			//向服务器发送数据
+			send(_sock, (const char*)&logout, sizeof(Logout), 0);
+		}
+		else
+		{
+			cout << "不支持的命令，请重新输入！" << endl;
+		}
+	}
+	return;
+}
 int main()
 {
 	//启动windows socket2.x环境
@@ -144,8 +177,10 @@ int main()
 	{
 		cout << "client connect success..."<<endl;
 	}
+	//启动线程
+	thread t1(cmdThread,_sock);
+	t1.detach();
 	//向服务器发送命令
-	
 	while (true)
 	{
 		fd_set fdReads;
@@ -167,12 +202,6 @@ int main()
 				break;
 			}
 		}
-		Log log;
-		strcpy(log.username, "sue");
-		strcpy(log.password, "memory");
-		//向服务器发送数据
-		send(_sock, (const char*)&log, sizeof(Log), 0);
-		//Sleep(1000);
 	}
 	
 	//关闭socket
