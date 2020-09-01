@@ -4,6 +4,7 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
 #ifdef _WIN32
+	#define FD_SETSIZE 1024
 	#define WIN32_LEAN_AND_MEAN //windows.h和winsock2中重复包含了一些头文件，避免重复定义
 	#include<Windows.h>
 	#include<WinSock2.h>
@@ -19,6 +20,7 @@
 	#define SOCKET_ERROR (-1)
 #endif
 #include "MsgHeader.h"
+#include"CELLTimestamp.h"
 #include<iostream>
 #include<vector>
 using namespace std;
@@ -61,10 +63,13 @@ class EasyTcpServer
 private:
 	SOCKET _sock;
 	vector<ClientSocket*> _clients;
+	CELLTimestamp _tTime;
+	int _recvCount;
 public:
 	EasyTcpServer()
 	{
 		_sock = INVALID_SOCKET;
+		_recvCount = 0;
 	}
 	virtual ~EasyTcpServer()
 	{
@@ -170,7 +175,7 @@ public:
 			SendDataToAll(&newuser);
 			//输出客户端信息
 			char clientIP[1024];
-			printf("<Socket:%d>新客户端连接:IP = %s, PORT = %d\n",_sock,\
+			printf("<Socket:%d>新客户端<%d>连接:IP = %s, PORT = %d\n",_sock,_clients.size(),\
 				inet_ntop(AF_INET, (void*)&clientAddr.sin_addr, clientIP, sizeof(clientIP)), \
 				ntohs(clientAddr.sin_port));
 			_clients.push_back(new ClientSocket(cSock));
@@ -314,6 +319,14 @@ public:
 	//响应网络消息
 	virtual	void onProcessMsg(DataHeader* header,SOCKET cSock)
 	{
+		_recvCount++;
+		auto t1 = _tTime.getElapsedSecond();
+		if (t1>=1.0)
+		{
+			printf("time<%lf>,socket<%d>,recvCount<%d>\n", t1, cSock, _recvCount);
+			_recvCount = 0;
+			_tTime.update();
+		}
 		//根据消息头处理不同种类的信息
 		switch (header->cmd)
 		{
@@ -322,7 +335,7 @@ public:
 			Log* log = (Log*)header;
 			//cout << "收到<SOCKET: " << cSock << ">命令: Login , " << " 数据长度： " << log->dataLength << endl;
 			//cout << "姓名： " << log->username << " 密码： " << log->password << endl;
-			LogResult ret;
+			//LogResult ret;
 			//send(cSock, (char*)&ret, sizeof(LogResult), 0);
 			break;
 		}
@@ -331,7 +344,7 @@ public:
 			Logout* logout = (Logout*)header;
 			//cout << "收到<SOCKET: " << cSock << ">命令: Loginout , " << " 数据长度： " << logout->dataLength << endl;
 			//cout << "姓名： " << logout->username << endl;
-			LogoutResult ret;
+			//LogoutResult ret;
 			//send(cSock, (char*)&ret, sizeof(LogoutResult), 0);
 			break;
 		}

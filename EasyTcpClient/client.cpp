@@ -45,18 +45,25 @@ void cmdThread()
 
 int main()
 {
-	//EasyTcpClient client1;
-	//client.InitSocket();
-	//client1.Connect("192.168.1.77", 4567);
-	const int count = 63;
+
+	const int count = 1000;
 	EasyTcpClient *clients[count];
 	for (int n=0;n<count;n++)
 	{
+		if (!bRun)
+		{
+			return 0;
+		}
 		clients[n] = new EasyTcpClient();
 	}
 	for (int n = 0; n < count; n++)
 	{
+		if (!bRun)
+		{
+			return 0;
+		}
 		clients[n]->Connect("192.168.1.77", 4567);
+		cout << "connect: " << n << endl;
 	}
 	//启动线程
 	thread t1(cmdThread);
@@ -81,6 +88,5 @@ int main()
 		clients[n]->Close();
 	}
 	cout << "已退出" << endl;
-	getchar();
 	return 0;
 }
