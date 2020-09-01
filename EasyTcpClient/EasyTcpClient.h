@@ -131,23 +131,51 @@ public:
 		}
 		return true;
 	}
-
+	//接收缓冲区大小
+#define RECV_BUFF_SIZE 10240 
+	//接收缓冲区
+	char _szRecv[RECV_BUFF_SIZE];
+	//第二缓冲区 消息缓冲区
+	char _szMsgBuf[RECV_BUFF_SIZE * 10];
+	int _lastPos = 0;
 	//接收数据，处理粘包，拆分包
 	int  RecvData(SOCKET _cSock)
 	{
 		//接收客户端信息
-		char szRecv[1024];//缓冲区
-		int nLen = (int)recv(_cSock, szRecv, sizeof(DataHeader), 0);
+		int nLen = (int)recv(_cSock, _szRecv, RECV_BUFF_SIZE, 0);
+
 		if (nLen <= 0)
 		{
 			cout << "与服务器断开连接,任务结束." << endl;
 			return -1;
 		}
-		DataHeader* header;
-		header = (DataHeader*)szRecv;
-		recv(_cSock, szRecv + sizeof(DataHeader), header->dataLength - sizeof(DataHeader), 0);
-		
-		onProcessMsg(header); //header和szRecv指向同一位置
+		//将收取到的数据拷贝到消息缓冲区
+		memcpy(_szMsgBuf+_lastPos, _szRecv, nLen);
+		//消息缓冲区的数据尾部位置后移
+		_lastPos += nLen;
+		//判断消息缓冲区的数据长度大于消息头长度
+		while(_lastPos>= sizeof(DataHeader))
+		{
+			DataHeader* header= (DataHeader*)_szMsgBuf;
+			//消息缓冲区剩余数据长度大于消息长度
+			if (_lastPos>=header->dataLength)
+			{
+				//消息缓冲区剩余未处理的数据长度
+				int nSize = _lastPos - header->dataLength;
+				//处理网络消息
+				onProcessMsg(header);
+				//将消息缓冲区剩余未处理的数据前移
+				memcpy(_szMsgBuf, _szMsgBuf + header->dataLength, nSize);
+				//消息缓冲区的数据尾部位置前移
+				_lastPos = nSize;
+			}
+			else
+			{
+				//剩余数据不够一条完整的消息
+				break;
+			}
+		}
+
 		return 0;
 	}
 
@@ -174,6 +202,15 @@ public:
 			NewUserJion* newUser = (NewUserJion*)header;
 			cout << "<socket:" << _sock << ">收到服务端消息: 新用户加入NewUser<Socket: " << newUser->sock << ">, 数据长度： " << newUser->dataLength << endl;
 			break;
+		}
+		case CMD_ERROR:
+		{
+			cout << "<socket:" << _sock << ">收到服务器消息ERROR, 数据长度： " << header->dataLength << endl;
+		}
+		default:
+		{
+			cout << "<socket:" << _sock << ">收到未定义消息, 数据长度： " << header->dataLength << endl;
+			
 		}
 		}
 	}

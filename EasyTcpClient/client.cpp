@@ -7,7 +7,7 @@ using namespace std;
 //#pragma comment(lib,"ws2_32.lib") //不利于跨平台，建议在属性里面修改，添加依赖项
 
 bool bRun = true;
-void cmdThread(EasyTcpClient* client)
+void cmdThread()
 {
 	while (true)
 	{
@@ -15,8 +15,8 @@ void cmdThread(EasyTcpClient* client)
 		cin >> cmdBuf;
 		if (0 == strcmp(cmdBuf, "exit"))
 		{
+			cout << "客户端线程退出" << endl;
 			bRun = false;
-			cout << "客户端<SOCKET: "<< client->_sock<<"> 线程退出" << endl;
 			break;
 		}
 		else if (0 == strcmp(cmdBuf, "login"))
@@ -25,14 +25,14 @@ void cmdThread(EasyTcpClient* client)
 			strcpy(log.username, "sue");
 			strcpy(log.password, "memory");
 			//向服务器发送数据
-			client->SendData(&log);
+			//client->SendData(&log);
 		}
 		else if (0 == strcmp(cmdBuf, "logout"))
 		{
 			Logout logout;
 			strcpy(logout.username, "sue");
 			//向服务器发送数据
-			client->SendData(&logout);
+			//client->SendData(&logout);
 		}
 		else
 		{
@@ -45,18 +45,41 @@ void cmdThread(EasyTcpClient* client)
 
 int main()
 {
-	EasyTcpClient client1;
+	//EasyTcpClient client1;
 	//client.InitSocket();
-	client1.Connect("192.168.1.77", 4567);
-
-	//启动线程
-	thread t1(cmdThread ,&client1);
-	t1.detach();
-	while (client1.isRun())
+	//client1.Connect("192.168.1.77", 4567);
+	const int count = 63;
+	EasyTcpClient *clients[count];
+	for (int n=0;n<count;n++)
 	{
-		client1.onRun();
+		clients[n] = new EasyTcpClient();
 	}
-	client1.Close();
+	for (int n = 0; n < count; n++)
+	{
+		clients[n]->Connect("192.168.1.77", 4567);
+	}
+	//启动线程
+	thread t1(cmdThread);
+	t1.detach();
+
+	Log login;
+	strcpy(login.username, "test");
+	strcpy(login.password, "test_password123");
+
+	while (bRun)
+	{
+		for (int n = 0; n < count; n++)
+		{
+			//clients[n].onRun();
+			clients[n]->SendData(&login);
+		}
+		
+	}
+	for (int n = 0; n < count; n++)
+	{
+		//clients[n].onRun();
+		clients[n]->Close();
+	}
 	cout << "已退出" << endl;
 	getchar();
 	return 0;
