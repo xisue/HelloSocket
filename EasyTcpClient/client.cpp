@@ -41,13 +41,14 @@ void cmdThread()
 	}
 	return;
 }
-const int cCount = 50;//客户端数量
+const int cCount = 8;//客户端数量
 const int tCount = 4;//发送线程数量
 
 EasyTcpClient* clients[cCount];
 
 void sendThread(int id)
 {
+	printf("thread<%d>,begin\n", id);
 	int c = cCount / tCount;
 	int begin = (id - 1) * c;
 	int end = id * c;
@@ -65,30 +66,32 @@ void sendThread(int id)
 		{
 			return ;
 		}
-		clients[n]->Connect("127.0.0.1", 4567);
-		cout << "connect: " << n << endl;
+		clients[n]->Connect("192.168.1.77", 4567);
+	}
+	printf("Thread<%d>,Connect<begin=%d,end=%d>\n", id, begin,end);
+
+	Log log[10];
+	for (int i=0;i<10;i++)
+	{
+		strcpy(log[i].username, "test");
+		strcpy(log[i].password, "test_password123");
 	}
 
-
-	Log log;
-	strcpy(log.username, "test");
-	strcpy(log.password, "test_password123");
-
+	const int nLen = sizeof(Log);
 	while (bRun)
 	{
 		for (int n = begin; n < end; n++)
 		{
-			//clients[n].onRun();
-			clients[n]->SendData(&log);
-			cout << "client send: name:" << log.username << " password:" << log.password << endl;
+			clients[n]->SendData(log,nLen);
+			clients[n]->onRun();
 		}
 
 	}
 	for (int n = begin; n < end; n++)
 	{
-		//clients[n].onRun();
 		clients[n]->Close();
 	}
+	printf("thread<%d>,exit\n", id);
 }
 int main()
 {
@@ -97,7 +100,7 @@ int main()
 	t1.detach();
 
 	//启动发送线程
-	for (int n = 0; n < cCount; n++)
+	for (int n = 0; n < tCount; n++)
 	{
 		thread t1(sendThread,n+1);
 		t1.detach();

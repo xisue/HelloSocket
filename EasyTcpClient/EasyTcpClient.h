@@ -22,15 +22,20 @@ using namespace std;
 
 class EasyTcpClient
 {
-public:
+private:
 	SOCKET _sock;
+	bool isConnect;
+public:
+	
 	EasyTcpClient()
 	{
 		_sock = INVALID_SOCKET;
+		isConnect = false;
 	}
 
 	virtual ~EasyTcpClient()
 	{
+		isConnect = false;
 		Close();
 	}
 	//初始化socket
@@ -53,10 +58,6 @@ public:
 		{
 			cout << "客户端无效的套接字..." << endl;
 		}
-		else
-		{
-			cout << "客户端创建套接字<socket:"<< _sock <<">..."<< endl;
-		}
 	}
 
 	//连接服务器
@@ -75,7 +76,7 @@ public:
 		}
 		else
 		{
-			cout << "客户端<socket:"<< _sock<<">连接"<<ip<<"成功..." << endl;
+			isConnect = true;
 		}
 		return ret;
 	}
@@ -95,12 +96,12 @@ public:
 #endif
 			_sock = INVALID_SOCKET;
 		}
-
+		isConnect = false;
 	}
 	//是否运行中
 	bool isRun()
 	{
-		return INVALID_SOCKET != _sock;
+		return INVALID_SOCKET != _sock&&isConnect;
 	}
 	//处理网络消息，select监听服务端发来的消息，接收消息显示登录结果等消息
 	bool onRun()
@@ -138,7 +139,7 @@ public:
 	//接收缓冲区
 	char _szRecv[RECV_BUFF_SIZE];
 	//第二缓冲区 消息缓冲区
-	char _szMsgBuf[RECV_BUFF_SIZE * 10];
+	char _szMsgBuf[RECV_BUFF_SIZE * 5];
 	int _lastPos = 0;
 	//接收数据，处理粘包，拆分包
 	int  RecvData(SOCKET _cSock)
@@ -208,6 +209,7 @@ public:
 		case CMD_ERROR:
 		{
 			cout << "<socket:" << _sock << ">收到服务器消息ERROR, 数据长度： " << header->dataLength << endl;
+			break;
 		}
 		default:
 		{
@@ -217,13 +219,16 @@ public:
 		}
 	}
 	//发送数据
-	int SendData(DataHeader* header)
+	int SendData(DataHeader* header,int nLen)
 	{
+		int ret = SOCKET_ERROR;
 		if (isRun()&&header)
 		{
-			return send(_sock, (const char*)header, header->dataLength, 0);
+			ret = send(_sock, (const char*)header, nLen, 0);
+			if (SOCKET_ERROR == ret)
+				Close();
 		}
-		return SOCKET_ERROR;
+		return ret;
 	}
 };
 
