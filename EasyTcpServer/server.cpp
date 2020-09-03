@@ -28,6 +28,7 @@ int main()
 	//server.InitSocket();
 	server.Bind(NULL, 4567);
 	server.Listen(128);
+	server.Start();
 	//启动线程
 	thread t1(cmdThread);
 	t1.detach();

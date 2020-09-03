@@ -41,52 +41,73 @@ void cmdThread()
 	}
 	return;
 }
+const int cCount = 50;//客户端数量
+const int tCount = 4;//发送线程数量
 
+EasyTcpClient* clients[cCount];
 
-int main()
+void sendThread(int id)
 {
-
-	const int count = 1000;
-	EasyTcpClient *clients[count];
-	for (int n=0;n<count;n++)
+	int c = cCount / tCount;
+	int begin = (id - 1) * c;
+	int end = id * c;
+	for (int n = begin; n < end; n++)
 	{
 		if (!bRun)
 		{
-			return 0;
+			return ;
 		}
 		clients[n] = new EasyTcpClient();
 	}
-	for (int n = 0; n < count; n++)
+	for (int n = begin; n < end; n++)
 	{
 		if (!bRun)
 		{
-			return 0;
+			return ;
 		}
-		clients[n]->Connect("192.168.1.77", 4567);
+		clients[n]->Connect("127.0.0.1", 4567);
 		cout << "connect: " << n << endl;
 	}
-	//启动线程
-	thread t1(cmdThread);
-	t1.detach();
 
-	Log login;
-	strcpy(login.username, "test");
-	strcpy(login.password, "test_password123");
+
+	Log log;
+	strcpy(log.username, "test");
+	strcpy(log.password, "test_password123");
 
 	while (bRun)
 	{
-		for (int n = 0; n < count; n++)
+		for (int n = begin; n < end; n++)
 		{
 			//clients[n].onRun();
-			clients[n]->SendData(&login);
+			clients[n]->SendData(&log);
+			cout << "client send: name:" << log.username << " password:" << log.password << endl;
 		}
-		
+
 	}
-	for (int n = 0; n < count; n++)
+	for (int n = begin; n < end; n++)
 	{
 		//clients[n].onRun();
 		clients[n]->Close();
 	}
+}
+int main()
+{
+	//启动UI线程
+	thread t1(cmdThread);
+	t1.detach();
+
+	//启动发送线程
+	for (int n = 0; n < cCount; n++)
+	{
+		thread t1(sendThread,n+1);
+		t1.detach();
+	}
+
+	while (bRun)
+	{
+		Sleep(100);
+	}
+	
 	cout << "已退出" << endl;
 	return 0;
 }
