@@ -65,6 +65,12 @@ private:
 	int _lastPos = 0;//消息缓冲区尾部
 };
 
+class INetEvent
+{
+public:
+	virtual void OnLeave(ClientSocket* pClient) = 0;
+private:
+};
 class CellServer
 {
 public:
@@ -73,11 +79,17 @@ public:
 		_sock = sock;
 		_pThread = nullptr;
 		_recvCount = 0;
+		_pNetEvent = nullptr;
 	}
 	~CellServer()
 	{
 		Close();
 		_sock = INVALID_SOCKET;
+	}
+	void setEventObj(INetEvent* event)
+	{
+		_pNetEvent = event;
+
 	}
 	//是否在工作中
 	bool isRun()
@@ -250,6 +262,8 @@ public:
 						auto iter = _clients.begin() + n;
 						if (iter != _clients.end())
 						{
+							if (_pNetEvent)
+								_pNetEvent->OnLeave(_clients[n]);
 							delete _clients[n];
 							_clients.erase(iter);
 						}
@@ -285,11 +299,12 @@ private:
 	vector<ClientSocket*> _clientsBuff;
 	mutex  _mutex;
 	thread* _pThread;
+	INetEvent* _pNetEvent;
 public:
 	atomic_int _recvCount;
 };
 
-class EasyTcpServer
+class EasyTcpServer:public INetEvent
 {
 
 public:
@@ -422,6 +437,7 @@ public:
 		{
 			auto ser = new CellServer(_sock);
 			_cellServer.push_back(ser);
+			ser->setEventObj(this);
 			ser->Start();
 		}
 	}
@@ -510,7 +526,7 @@ public:
 				recvCount += ser->_recvCount;
 				ser->_recvCount = 0;
 			}
-			printf("time<%lf>,socket<%d>,clients<%d>,recvCount<%d>\n", t1, _sock, _clients.size(), recvCount);
+			printf("thread<%d>,time<%lf>,socket<%d>,clients<%d>,recvCount<%d>\n",_cellServer.size(), t1, _sock, _clients.size(), recvCount);
 			recvCount = 0;
 			_tTime.update();
 		}
@@ -613,6 +629,18 @@ public:
 			SendData(header, _clients[n]->sockfd());
 		}
 		return 0;
+	}
+	virtual void OnLeave(ClientSocket* pClient)
+	{
+		for (int n=(int)_clients.size()-1;n>=0;n--)
+		{
+			if (_clients[n]==pClient)
+			{
+				auto iter = _clients.begin() + n;
+				if (iter != _clients.end())
+					_clients.erase(iter);
+			}
+		}
 	}
 private:
 	SOCKET _sock;
